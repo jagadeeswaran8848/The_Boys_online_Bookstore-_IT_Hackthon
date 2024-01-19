@@ -1,0 +1,23 @@
+<!-- templates/profile.html -->
+
+{% extends 'layout.html' %}
+
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+  <div class="jumbotron">
+    <div class="container">
+      <h1 class="display-4">User Profile</h1>
+      <p class="lead">Welcome, {{ user.username }}!</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>Your Details</h2>
+    <ul>
+      <li><strong>Username : </strong> {{ user.username }}</li>
+      <li><strong>Mobile Number : </strong> {{ user.mobile_number}}</li>
+      <!-- Add more user details as needed -->
+    </ul>
+  </div>
+{% endblock %}

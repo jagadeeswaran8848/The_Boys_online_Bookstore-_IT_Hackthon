@@ -12,7 +12,7 @@ Session(app)
 
 client = MongoClient('mongodb://localhost:27017/')
 db = client['product']
-users = db['users']
+user_col = db['users']
 col = db['books']
 
 col.delete_many({})
@@ -42,8 +42,9 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+       
 
-        user = users.find_one({'username': username, 'password': password})
+        user = user_col.find_one({'username': username, 'password': password})
 
         if user:
             session['user_id'] = str(user['_id'])
@@ -60,15 +61,16 @@ def signup():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        mobile_number = request.form.get('mobileno')  # Add this line
 
-        existing_user = users.find_one({'username': username})
+        existing_user = user_col.find_one({'username': username})
 
         if existing_user:
             error_message = 'Username already taken. Please choose a different username.'
             return render_template('signup.html', error_message=error_message)
 
-        new_user = {'username': username, 'password': password}
-        user_id = users.insert_one(new_user).inserted_id
+        new_user = {'username': username, 'password': password, 'mobile_number': mobile_number}  # Update this line
+        user_id = user_col.insert_one(new_user).inserted_id
 
         session['user_id'] = str(user_id)
         return redirect(url_for('home'))
@@ -81,7 +83,6 @@ def products():
     product_data = col.find()
     return render_template('products.html', products=product_data)
 
-# ... (other imports)
 
 @app.route('/cart', methods=['GET', 'POST'])
 def cart():
@@ -128,6 +129,23 @@ def remove_from_cart():
         session['cart'] = [item for item in session['cart'] if item['product_id'] != product_id]
 
     return jsonify({'message': 'Item removed from cart'})
+
+
+
+@app.route('/profile')
+def profile():
+    user_id = session.get('user_id')
+    
+    if user_id:
+        user = user_col.find_one({'_id': ObjectId(user_id)})
+        return render_template('profile.html', user=user)
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('home'))
 
 if __name__ == '__main__':
     app.run(debug=True)
