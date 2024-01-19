@@ -1,25 +1,24 @@
-from flask import Flask, render_template, redirect, url_for, request, session
+from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_session import Session
 from pymongo import MongoClient
 from bson import ObjectId
-
 app = Flask(__name__)
 
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SECRET_KEY'] = 'your_secret_key'  
+Session(app)
+app.config['SECRET_KEY'] = 'your_secret_key'
 
 Session(app)
 
 client = MongoClient('mongodb://localhost:27017/')
-db = client['product']  
-
+db = client['product']
 users = db['users']
+col = db['books']
 
-col = db['books']  
-col.delete_many({})  
+col.delete_many({})
 
 sample_products = [
-     {'name': 'Book 1', 'description': 'Description for Book 1', 'price': 20.99, 'image_url': 'https://via.placeholder.com/150', 'genre': 'Fiction'},
+    {'name': 'Book 1', 'description': 'Description for Book 1', 'price': 20.99, 'image_url': 'https://via.placeholder.com/150', 'genre': 'Fiction'},
     {'name': 'Book 2', 'description': 'Description for Book 2', 'price': 15.99, 'image_url': 'https://via.placeholder.com/150', 'genre': 'Mystery'},
     {'name': 'Book 3', 'description': 'Description for Book 3', 'price': 25.99, 'image_url': 'https://via.placeholder.com/150', 'genre': 'Science Fiction'},
     {'name': 'Book 4', 'description': 'Description for Book 4', 'price': 18.50, 'image_url': 'https://via.placeholder.com/150', 'genre': 'Fantasy'},
@@ -29,12 +28,14 @@ sample_products = [
     {'name': 'Book 8', 'description': 'Description for Book 8', 'price': 27.99, 'image_url': 'https://via.placeholder.com/150', 'genre': 'Biography'},
     {'name': 'Book 9', 'description': 'Description for Book 9', 'price': 23.25, 'image_url': 'https://via.placeholder.com/150', 'genre': 'Self-Help'},
     {'name': 'Book 10', 'description': 'Description for Book 10', 'price': 15.99, 'image_url': 'https://via.placeholder.com/150', 'genre': 'Adventure'}
-    ]
+]
 col.insert_many(sample_products)
+
 
 @app.route('/')
 def home():
     return render_template('home.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -52,6 +53,7 @@ def login():
         return render_template('login.html', error_message=error_message)
 
     return render_template('login.html')
+
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -73,10 +75,13 @@ def signup():
 
     return render_template('signup.html')
 
+
 @app.route('/products')
 def products():
     product_data = col.find()
     return render_template('products.html', products=product_data)
+
+# ... (other imports)
 
 @app.route('/cart', methods=['GET', 'POST'])
 def cart():
@@ -84,7 +89,13 @@ def cart():
         product_id = request.form.get('product_id')
         quantity = int(request.form.get('quantity'))
 
-        product = products.find_one({"_id": ObjectId(product_id)})
+        if not product_id:
+            return redirect(url_for('cart'))
+
+        product = col.find_one({"_id": ObjectId(product_id)})
+
+        if not product:
+            return redirect(url_for('cart'))
 
         if 'cart' not in session:
             session['cart'] = []
@@ -108,6 +119,15 @@ def cart():
     total_price = sum(item['price'] * item['quantity'] for item in cart_items)
 
     return render_template('cart.html', items=cart_items, total_price=total_price)
+
+
+@app.route('/remove_from_cart', methods=['POST'])
+def remove_from_cart():
+    if 'cart' in session:
+        product_id = request.form.get('product_id')
+        session['cart'] = [item for item in session['cart'] if item['product_id'] != product_id]
+
+    return jsonify({'message': 'Item removed from cart'})
 
 if __name__ == '__main__':
     app.run(debug=True)
